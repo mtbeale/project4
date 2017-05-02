@@ -21,7 +21,7 @@ void close_pipe(int fds[2]);
 
 int main () {
 
-  char *argv[256], *cmd1[256], *cmd2[256];
+  char *argv[256], *cmd1[256], *cmd2[256], cwd[1024];
   int argc;
   Redirect pipe_redirect;
   getcwd(cwd,sizeof(cwd));
