@@ -17,6 +17,7 @@ Redirect parse_input(int argc, char** argv, char** cmd1, char** cmd2);
 void pipe_cmd(char**, char**);
 void run_cmd(int argc, char** argv);
 void handle_sig(int sig);
+void redirect_cmd(char** cmd, char** file);
 void close_pipe(int fds[2]);
 
 int main () {
