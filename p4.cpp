@@ -17,6 +17,7 @@ Redirect parse_input(int argc, char** argv, char** cmd1, char** cmd2);
 void pipe_cmd(char**, char**);
 void run_cmd(int argc, char** argv);
 void handle_sig(int sig);
+void close_pipe(int fds[2]);
 
 int main () {
 
@@ -173,3 +174,98 @@ void handle_sig(int sig) {
   default: cout << "???" << endl; break;
   }
 }
+
+void redirect_cmd(char** cmd, char** file) {
+  int fds[2]; // file descriptors
+  int count;  // used for reading from stdout
+  int fd;     // single file descriptor
+  char c;     // used for writing and reading a character at a time
+  pid_t pid;  // will hold process ID; used with fork()
+
+  pipe(fds);
+
+  // child process #1
+  if (fork() == 0) {
+
+    fd = open(file[0], O_RDWR | O_CREAT, 0666);
+
+    // open() returns a -1 if an error occurred
+    if (fd < 0) {
+      printf("Error: %s\n", strerror(errno));
+      return;
+    }
+
+    dup2(fds[0], 0);
+
+    // Don't need stdout end of pipe.
+    close(fds[1]);
+
+    // Read from stdout...
+    while ((count = read(0, &c, 1)) > 0)
+      write(fd, &c, 1); // Write to file.
+
+    execlp("echo", "echo", NULL);
+ // child process #2
+  } else if ((pid = fork()) == 0) {
+    dup2(fds[1], 1);
+
+    // Don't need stdin end of pipe
+    close(fds[0]);
+
+    // Output contents of the given file to stdout
+    execvp(cmd[0], cmd);
+    perror("execvp failed");
+
+    // parent process
+  } else {
+    waitpid(pid, NULL, 0);
+  }
+}
+
+
+void pipe_cmd(char** cmd1, char** cmd2) {
+  int fds[2]; // file descriptors
+  pipe(fds);
+  pid_t pid;
+  if (fork() == 0) {
+    // Reassign stdin to fds[0] end of pipe
+    dup2(fds[0], 0);
+
+    // Not going to write in this child process, so we can close this end
+    // of the pipe
+    close_pipe(fds);
+
+    // Execute the second command
+    execvp(cmd2[0], cmd2);
+    perror("execvp failed");
+
+    // child process #2
+  } else if ((pid = fork()) == 0) {
+    // Reassign stdout to fds[1] end of pipe
+    dup2(fds[1], 1);
+
+    // Not going to read in this child process, so we can close this end
+    // of the pipe
+    close_pipe(fds);
+
+    // Execute the first command
+    execvp(cmd1[0], cmd1);
+    perror("execvp failed");
+
+    // parent process
+  } else {
+    close_pipe(fds);
+    waitpid(pid, NULL, 0);
+  }
+}
+
+void close_pipe(int pipefd [2]) {
+  if (close(pipefd[0]) == -1) {
+    perror("close");
+    exit(EXIT_FAILURE);
+  } // if
+  if (close(pipefd[1]) == -1) {
+    perror("close");
+    exit(EXIT_FAILURE);
+  } // if
+} // close_pipe
