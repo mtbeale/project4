@@ -23,28 +23,35 @@ int main () {
   char *argv[256], *cmd1[256], *cmd2[256];
   int argc;
   Redirect pipe_redirect;
+  getcwd(cwd,sizeof(cwd));
 
   while (true) {
-    cout << "1730sh: ";
+    cout << "1730sh: " << cwd << "/$ ";
     signal(SIGINT,handle_sig);
-    signal(SIGQUIT,handle_sig);
-    signal(SIGTSTP,handle_sig);
+    //  signal(SIGQUIT,handle_sig);
+    //  signal(SIGTSTP,handle_sig);
     signal(SIGTTIN,handle_sig);
     signal(SIGTTOU,handle_sig);
-    signal(SIGCHLD,handle_sig);
+    //    signal(SIGCHLD,handle_sig);
 
     argc = read_input(argv);
     pipe_redirect = parse_input(argc,argv,cmd1,cmd1);
 
-    if (pipe_redirect == NEITHER) {
-      run_cmd(argc, argv);
+    if (pipe_redirect == PIPE) {
+      pipe_cmd(cmd1, cmd2);
+    } else if (pipe_redirect == REDIRECT) {
+      redirect_cmd(cmd1,cmd2);
+    } else {
+      run_cmd(argc,argv);
     }
+
       for (int i = 0; i< argc;i++)
       argv[i] = NULL;
   }
 
   return 0;
   }
+
 
 int read_input(char **argv) {
   char *cstr;
